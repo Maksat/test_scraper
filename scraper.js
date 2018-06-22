@@ -7,7 +7,7 @@ var sqlite3 = require('sqlite3').verbose();
 
 var saleRegex = new RegExp("sale-[0-9]+");
 var postedOnRegex = new RegExp("^Posted.+");
-
+var db = new sqlite3.Database('data.sqlite');
 var results = [];
 
 class Sale{
@@ -257,7 +257,18 @@ var q = tress(function(url, callback){
         	sale.bathrooms = getBathrooms(li);
         	sale.parking = getParking(li);
 
-        	results.push([sale.postDate.toString(), sale.saleId, sale.price, sale.link, sale.site, sale.location, sale.propertyType, sale.builtUp, sale.landArea, sale.furnishing, sale.bedrooms, sale.bathrooms, sale.parking]);
+        	var result = [sale.postDate.toString(), sale.saleId, sale.price, sale.link, sale.site, sale.location, sale.propertyType, sale.builtUp, sale.landArea, sale.furnishing, sale.bedrooms, sale.bathrooms, sale.parking];
+            
+            db.serialize(function(){
+                // db.run('DROP TABLE IF EXISTS data');
+                db.run("CREATE TABLE IF NOT EXISTS data (postDate TEXT, saleId TEXT, price TEXT, link TEXT, site TEXT, location TEXT, propertyType TEXT, pricePerUnit TEXT, builtUp TEXT, landArea TEXT, furnishing TEXT, bedrooms TEXT, bathrooms TEXT, parking TEXT)");
+                var stmt = db.prepare('INSERT INTO data (postDate, saleId, price, link, site, location, propertyType, pricePerUnit, builtUp, landArea, furnishing, bedrooms, bathrooms, parking) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                stmt.run(result);
+                // for (var i = 0; i < results.length; i++) {
+                //     stmt.run(results[i]);
+                // };
+                stmt.finalize();
+            });
         }
 
         $("li").filter(function(){
@@ -267,23 +278,12 @@ var q = tress(function(url, callback){
 
          callback(url);
     });
-}, 10); // запускаем 10 параллельных потоков
+}, 1); // запускаем 10 параллельных потоков
 
 q.drain = function(){
-	fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));
-
-	var db = new sqlite3.Database('data.sqlite');
-    db.serialize(function(){
-        // db.run('DROP TABLE IF EXISTS data');
-        db.run("CREATE TABLE IF NOT EXISTS data (postDate TEXT, saleId TEXT, price TEXT, link TEXT, site TEXT, location TEXT, propertyType TEXT, pricePerUnit TEXT, builtUp TEXT, landArea TEXT, furnishing TEXT, bedrooms TEXT, bathrooms TEXT, parking TEXT)");
-        var stmt = db.prepare('INSERT INTO data (postDate, saleId, price, link, site, location, propertyType, pricePerUnit, builtUp, landArea, furnishing, bedrooms, bathrooms, parking) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-
-        for (var i = 0; i < results.length; i++) {
-            stmt.run(results[i]);
-        };
-        stmt.finalize();
-        db.close();
-    });
+	// fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));
+    console.log("completed");
+	db.close();
 }
 
 var URL = 'https://www.iproperty.com.my/sale/kuala-lumpur/all-residential/?page=';
@@ -297,7 +297,7 @@ needle.get(URL+1, function(err, res){
 		});
 
 		console.log("total pages: "+totalPages);
-
+        totalPages = 2;
 		for(var i=1;i<totalPages;i++)
 		{
 			q.push(URL+i, callback);

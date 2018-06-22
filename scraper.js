@@ -267,7 +267,7 @@ var q = tress(function(url, callback){
 
          callback(url);
     });
-}, 1); // запускаем 10 параллельных потоков
+}, 10); // запускаем 10 параллельных потоков
 
 q.drain = function(){
 	fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));

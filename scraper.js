@@ -54,7 +54,10 @@ var crawl = function(link)
                         attributes["furnishing"], 
                         attributes["unitType"], 
                         attributes["occupancy"], 
-                        attributes["titleType"]);
+                        attributes["titleType"],
+                        attributes["completionDate"],
+                        attributes["bumiDiscount"]
+                        );
 
             var address = json["detail"]["address"];
             result.push(address["formattedAddress"],
@@ -74,8 +77,8 @@ var crawl = function(link)
             result.push(json["detail"]["parentAddress"]);
             result.push(json["detail"]["buildingName"]);
             
-            var createTableQuery = "CREATE TABLE IF NOT EXISTS data (type TEXT, currency TEXT, min TEXT, max TEXT, bathroom TEXT, bedroom TEXT, carPark TEXT, builtUp TEXT, landArea TEXT, landTitleType TEXT, tenure TEXT, facingDirection TEXT, furnishing TEXT, unitType TEXT, occupancy TEXT, titleType TEXT, formattedAddress TEXT, lat TEXT, lng TEXT, hasLatLng TEXT, isPrimary TEXT, id TEXT, title TEXT, tier TEXT, propertyType TEXT, description TEXT, updatedAt TEXT, featureDescription TEXT, referenceCode TEXT, parentAddress TEXT, buildingName TEXT)";
-            var insertQuery = "INSERT INTO data (type, currency, min, max, bathroom, bedroom, carPark, builtUp, landArea, landTitleType, tenure, facingDirection, furnishing, unitType, occupancy, titleType, formattedAddress, lat, lng, hasLatLng, isPrimary, id, title, tier, propertyType, description, updatedAt, featureDescription, referenceCode, parentAddress, buildingName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var createTableQuery = "CREATE TABLE IF NOT EXISTS data (type TEXT, currency TEXT, min TEXT, max TEXT, bathroom TEXT, bedroom TEXT, carPark TEXT, builtUp TEXT, landArea TEXT, landTitleType TEXT, tenure TEXT, facingDirection TEXT, furnishing TEXT, unitType TEXT, occupancy TEXT, titleType TEXT, completionDate TEXT, bumiDiscount TEXT, formattedAddress TEXT, lat TEXT, lng TEXT, hasLatLng TEXT, isPrimary TEXT, id TEXT, title TEXT, tier TEXT, propertyType TEXT, description TEXT, updatedAt TEXT, featureDescription TEXT, referenceCode TEXT, parentAddress TEXT, buildingName TEXT)";
+            var insertQuery = "INSERT INTO data (type, currency, min, max, bathroom, bedroom, carPark, builtUp, landArea, landTitleType, tenure, facingDirection, furnishing, unitType, occupancy, titleType, completionDate, bumiDiscount, formattedAddress, lat, lng, hasLatLng, isPrimary, id, title, tier, propertyType, description, updatedAt, featureDescription, referenceCode, parentAddress, buildingName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             db.serialize(function(){
                 db.run(createTableQuery);

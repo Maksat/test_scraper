@@ -6,77 +6,88 @@ var fs = require('fs');
 var sqlite3 = require('sqlite3').verbose();
 
 var saleRegex = new RegExp("sale-[0-9]+");
-var postedOnRegex = new RegExp("^Posted.+");
+
 var db = new sqlite3.Database('data.sqlite');
 var results = [];
-
-class Sale{
-	get postDate(){ return this._postDate; }
-	set postDate(val){ this._postDate = val; }
-
-	get saleId(){ return this._saleId; }
-	set saleId(val){ this._saleId = val; }
-
-	get price(){ return this._price; }
-	set price(val){ this._price = val; }
-
-	get link(){ return this._link; }
-	set link(val){ this._link = val; }
-
-	get site(){ return this._site; }
-	set site(val){ this._site = val; }
-
-	get location(){ return this._location; }
-	set location(val){ this._location = val; }
-
-	get propertyType(){ return this._propertyType; }
-	set propertyType(val){ this._propertyType = val; }
-
-	get pricePerUnit(){ return this._pricePerUnit; }
-	set pricePerUnit(val){ this._pricePerUnit = val; }
-
-	get builtUp(){ return this._builtUp; }
-	set builtUp(val){ this._builtUp = val; }
-	
-	get landArea(){ return this._landArea; }
-	set landArea(val){ this._landArea = val; }
-
-	get furnishing(){ return this._furnishing; }
-	set furnishing(val){ this._furnishing = val; }
-	
-	get bedrooms(){ return this._bedrooms; }
-	set bedrooms(val){ this._bedrooms = val; }
-
-	get bathrooms(){ return this._bathrooms; }
-	set bathrooms(val){ this._bathrooms = val; }
-
-	get parking(){ return this._parking; }
-	set parking(val){ this._parking = val; }
-
-	toString()
-	{
-		return 	this.postDate+"\t"+
-				this.saleId+"\t"+
-				this.price+"\t"+
-				this.link+"\t"+
-				this.site+"\t"+
-				this.location+"\t"+
-				this.propertyType+"\t"+
-				this.pricePerUnit+"\t"+
-				this.builtUp+"\t"+
-				this.landArea+"\t"+
-				this.furnishing+"\t"+
-				this.bedrooms+"\t"+
-				this.bathrooms+"\t"+
-				this.parking;
-	}
-}
 
 var callback = function(url)
 {
 	console.log("Finished: "+url);
 }
 
+var saleCallback = function(url)
+{
+    console.log("Finished sale: "+url);
+}
+
+var crawl = function(link)
+{
+    needle.get(link, function(err, res){
+        if(err) throw err;
+
+        var $ = cheerio.load(res.body);
+        $("script").filter(function(){
+            var innerText = $(this).html();
+            return innerText.indexOf("window.__INITIAL_STATE__") >= 0;
+        }).each(function(){
+            var innerText = $(this).html();
+            var jsonStart = innerText.indexOf("{");
+            var jsonEnd = innerText.lastIndexOf("}") + 1;
+            var jsonString = innerText.substring(jsonStart, jsonEnd);
+
+
+            var result = new Array();
+
+            var json = JSON.parse(jsonString);
+            var prices = json["detail"]["prices"][0];
+            result.push(prices["type"], prices["currency"], prices["min"], prices["max"]);
+
+            var attributes = json["detail"]["attributes"];
+            result.push(attributes["bathroom"], 
+                        attributes["bedroom"], 
+                        attributes["carPark"], 
+                        attributes["builtUp"],
+                        attributes["landArea"], 
+                        attributes["landTitleType"], 
+                        attributes["tenure"], 
+                        attributes["facingDirection"],
+                        attributes["furnishing"], 
+                        attributes["unitType"], 
+                        attributes["occupancy"], 
+                        attributes["titleType"]);
+
+            var address = json["detail"]["address"];
+            result.push(address["formattedAddress"],
+                        address["lat"],
+                        address["lng"],
+                        address["hasLatLng"]);
+
+            result.push(json["detail"]["isPrimary"]);
+            result.push(json["detail"]["id"]);
+            result.push(json["detail"]["title"]);
+            result.push(json["detail"]["tier"]);
+            result.push(json["detail"]["propertyType"]);
+            result.push(json["detail"]["description"]);
+            result.push(json["detail"]["updatedAt"]);
+            result.push(json["detail"]["featureDescription"]);
+            result.push(json["detail"]["referenceCode"]);
+            result.push(json["detail"]["parentAddress"]);
+            result.push(json["detail"]["buildingName"]);
+            
+            var createTableQuery = "CREATE TABLE IF NOT EXISTS data (type TEXT, currency TEXT, min TEXT, max TEXT, bathroom TEXT, bedroom TEXT, carPark TEXT, builtUp TEXT, landArea TEXT, landTitleType TEXT, tenure TEXT, facingDirection TEXT, furnishing TEXT, unitType TEXT, occupancy TEXT, titleType TEXT, formattedAddress TEXT, lat TEXT, lng TEXT, hasLatLng TEXT, isPrimary TEXT, id TEXT, title TEXT, tier TEXT, propertyType TEXT, description TEXT, updatedAt TEXT, featureDescription TEXT, referenceCode TEXT, parentAddress TEXT, buildingName TEXT)";
+            var insertQuery = "INSERT INTO data (type, currency, min, max, bathroom, bedroom, carPark, builtUp, landArea, landTitleType, tenure, facingDirection, furnishing, unitType, occupancy, titleType, formattedAddress, lat, lng, hasLatLng, isPrimary, id, title, tier, propertyType, description, updatedAt, featureDescription, referenceCode, parentAddress, buildingName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            db.serialize(function(){
+                db.run(createTableQuery);
+                var stmt = db.prepare(insertQuery);
+                stmt.run(result);
+                stmt.finalize();
+            });
+            saleCallback(link);
+        });
+    })
+};
+  
 var q = tress(function(url, callback){
 	needle.get(url, function(err, res){
 		if (err) throw err;
@@ -85,51 +96,6 @@ var q = tress(function(url, callback){
         var $ = cheerio.load(res.body);
         // var $ = cheerio.load(fs.readFileSync("page.html"));
 
-
-        var getPostedOn = function(sale)
-        {
-        	var date;
-
-			$(sale).find("p").filter(function(){
-        		var text = $(this).text();
-        		return postedOnRegex.test(text);
-        	}).each(function()
-        	{
-        		date = $(this).text();
-
-        		var match = date.match(/Posted( on)* (.+)/);
-        		date = match[2];
-        		var options = { day: 'numeric', month: 'short', year: 'numeric' };
-
-        		var d = new Date();
-        		var today = d.toLocaleDateString("en-US", options);
-        		d.setDate(d.getDate() - 1);
-        		var yesterday = d.toLocaleDateString("en-US", options);
-
-
-        		date = new Date(date.replace("yesterday", yesterday).replace("today", today));
-        	});
-
-        	return date;
-        }
-
-        var getSaleId = function(sale)
-        {
-        	var saleClass = $(sale).attr("class");
-        	var match = saleClass.match(/-([0-9]+) /);
-        	var saleId = match[1];        	
-        	return saleId;
-        }
-
-        var getPrice = function(sale)
-        {
-        	var price;
-
-        	$(sale).find('.listing-primary-price-item').each(function(){
-        		price = $(this).text();
-        	});
-        	return price;
-        }
 
         var getLink = function(sale)
         {
@@ -141,134 +107,10 @@ var q = tress(function(url, callback){
         	return link;
         }
 
-        var getSite = function(sale)
-        {
-        	var site;
-
-        	$(sale).find("h3").each(function(){
-        		site = $(this).text();
-        	});
-        	return site;
-        }
-
-        var getLocation = function(sale)
-        {
-        	var location;
-        	$(sale).find("h3").each(function(){
-        		location = $(this).parent().next().text();
-        	});
-        	return location;
-        }
-
-        var getPropertyType = function(sale)
-        {
-        	var propertyType;
-        	$(sale).find("h3").each(function(){
-        		var div = $(this).parent().parent().parent().next();
-        		div.find("a").each(function()
-        		{
-        			propertyType = $(this).text();
-        			return false;
-        		});
-        		return false;
-        	});
-        	return propertyType;
-        }
-
-        var getBuiltUp = function(sale)
-        {
-        	var pricePerUnit;
-        	$(sale).find(".builtUp-attr").each(function(){
-
-        		pricePerUnit = $(this).find(".attrs-price-per-unit-desktop").text();
-        		if(pricePerUnit)
-        		{
-        			var match = pricePerUnit.match(/ [0-9]+(,[0-9]+)*/);
-        			pricePerUnit = match[0].trim();
-        		}
-        		return false;
-        	});
-        	return pricePerUnit;
-        }
-
-        var getLandArea = function(sale)
-        {
-        	var landArea;
-        	$(sale).find(".landArea-attr").each(function(){
-        		landArea = $(this).find(".attrs-price-per-unit-desktop").text();
-        		return false;
-        	});        	
-        	return landArea;
-        }
-
-        var getFurnishing = function(sale)
-        {
-        	var furnishing;
-        	$(sale).find(".furnishing-attr").each(function(){
-        		furnishing = $(this).find(".attrs-price-per-unit-desktop").text();
-        		return false;
-        	});
-        	return furnishing;
-        }
-
-        var getBedrooms = function(sale)
-        {
-        	var bedrooms;
-        	$(sale).find(".bedroom-facility").each(function(){
-        		bedrooms = $(this).text();
-        	});
-        	
-        	return bedrooms;
-        }
-
-        var getBathrooms = function(sale)
-        {
-        	var bathrooms;
-        	$(sale).find(".bathroom-facility").each(function(){
-        		bathrooms = $(this).text();
-        	});
-        	return bathrooms;
-        }
-
-        var getParking = function(sale)
-        {
-        	var parking;
-        	$(sale).find(".carPark-facility").each(function(){
-        		parking = $(this).text();
-        	});
-        	return parking;
-        }
-
         var parseSale = function(index, li)
         {
-        	var sale = new Sale();
-
-        	sale.postDate = getPostedOn(li);
-        	sale.saleId = getSaleId(li);
-        	sale.price = getPrice(li);
-        	sale.link = getLink(li);
-        	sale.site = getSite(li);
-        	sale.location = getLocation(li);
-        	sale.propertyType = getPropertyType(li);
-        	sale.builtUp = getBuiltUp(li);
-        	sale.landArea = getLandArea(li);
-        	sale.furnishing = getFurnishing(li);
-        	sale.bedrooms = getBedrooms(li);
-        	sale.bathrooms = getBathrooms(li);
-        	sale.parking = getParking(li);
-
-        	var result = [sale.postDate.toString(), sale.saleId, sale.price, sale.link, sale.site, sale.location, sale.propertyType, sale.builtUp, sale.landArea, sale.furnishing, sale.bedrooms, sale.bathrooms, sale.parking];
-            
-            db.serialize(function(){
-                // db.run('DROP TABLE IF EXISTS data');
-                db.run("CREATE TABLE IF NOT EXISTS data (postDate TEXT, saleId TEXT, price TEXT, link TEXT, site TEXT, location TEXT, propertyType TEXT, pricePerUnit TEXT, builtUp TEXT, landArea TEXT, furnishing TEXT, bedrooms TEXT, bathrooms TEXT, parking TEXT)");
-                var stmt = db.prepare('INSERT INTO data (postDate, saleId, price, link, site, location, propertyType, pricePerUnit, builtUp, landArea, furnishing, bedrooms, bathrooms, parking) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                stmt.run(result);
-                // for (var i = 0; i < results.length; i++) {
-                //     stmt.run(results[i]);
-                // };
-                stmt.finalize();
-            });
+        	var link = "https://www.iproperty.com.my"+getLink(li);
+            crawl(link);
         }
 
         $("li").filter(function(){
@@ -278,12 +120,11 @@ var q = tress(function(url, callback){
 
          callback(url);
     });
-}, 10); // запускаем 10 параллельных потоков
+}, -10000); // запускаем 10 параллельных потоков
 
 q.drain = function(){
 	// fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));
     console.log("completed");
-	db.close();
 }
 
 var URL = 'https://www.iproperty.com.my/sale/kuala-lumpur/all-residential/?page=';
@@ -297,14 +138,9 @@ needle.get(URL+1, function(err, res){
 		});
 
 		console.log("total pages: "+totalPages);
-        
+        totalPages = 2;
 		for(var i=1;i<totalPages;i++)
 		{
 			q.push(URL+i, callback);
 		}
 });
-
-
-
-
-

@@ -141,7 +141,7 @@ needle.get(URL+1, function(err, res){
 		});
 
 		console.log("total pages: "+totalPages);
-        totalPages = 2;
+        
 		for(var i=1;i<totalPages;i++)
 		{
 			q.push(URL+i, callback);

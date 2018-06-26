@@ -70,15 +70,15 @@ var crawl = function(link)
             result.push(json["detail"]["title"]);
             result.push(json["detail"]["tier"]);
             result.push(json["detail"]["propertyType"]);
-            result.push(json["detail"]["description"]);
+            // result.push(json["detail"]["description"]);
             result.push(json["detail"]["updatedAt"]);
             result.push(json["detail"]["featureDescription"]);
             result.push(json["detail"]["referenceCode"]);
             result.push(json["detail"]["parentAddress"]);
             result.push(json["detail"]["buildingName"]);
             
-            var createTableQuery = "CREATE TABLE IF NOT EXISTS data (type TEXT, currency TEXT, min TEXT, max TEXT, bathroom TEXT, bedroom TEXT, carPark TEXT, builtUp TEXT, landArea TEXT, landTitleType TEXT, tenure TEXT, facingDirection TEXT, furnishing TEXT, unitType TEXT, occupancy TEXT, titleType TEXT, completionDate TEXT, bumiDiscount TEXT, formattedAddress TEXT, lat TEXT, lng TEXT, hasLatLng TEXT, isPrimary TEXT, id TEXT, title TEXT, tier TEXT, propertyType TEXT, description TEXT, updatedAt TEXT, featureDescription TEXT, referenceCode TEXT, parentAddress TEXT, buildingName TEXT)";
-            var insertQuery = "INSERT INTO data (type, currency, min, max, bathroom, bedroom, carPark, builtUp, landArea, landTitleType, tenure, facingDirection, furnishing, unitType, occupancy, titleType, completionDate, bumiDiscount, formattedAddress, lat, lng, hasLatLng, isPrimary, id, title, tier, propertyType, description, updatedAt, featureDescription, referenceCode, parentAddress, buildingName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var createTableQuery = "CREATE TABLE IF NOT EXISTS data (type TEXT, currency TEXT, min TEXT, max TEXT, bathroom TEXT, bedroom TEXT, carPark TEXT, builtUp TEXT, landArea TEXT, landTitleType TEXT, tenure TEXT, facingDirection TEXT, furnishing TEXT, unitType TEXT, occupancy TEXT, titleType TEXT, completionDate TEXT, bumiDiscount TEXT, formattedAddress TEXT, lat TEXT, lng TEXT, hasLatLng TEXT, isPrimary TEXT, id TEXT, title TEXT, tier TEXT, propertyType TEXT, updatedAt TEXT, featureDescription TEXT, referenceCode TEXT, parentAddress TEXT, buildingName TEXT)";
+            var insertQuery = "INSERT INTO data (type, currency, min, max, bathroom, bedroom, carPark, builtUp, landArea, landTitleType, tenure, facingDirection, furnishing, unitType, occupancy, titleType, completionDate, bumiDiscount, formattedAddress, lat, lng, hasLatLng, isPrimary, id, title, tier, propertyType, description, updatedAt, featureDescription, referenceCode, parentAddress, buildingName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             db.serialize(function(){
                 db.run(createTableQuery);
@@ -123,14 +123,14 @@ var q = tress(function(url, callback){
 
          callback(url);
     });
-}, -10000); // запускаем 10 параллельных потоков
+}, -5000); // запускаем 10 параллельных потоков
 
 q.drain = function(){
 	// fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));
     console.log("completed");
 }
 
-var URL = 'https://www.iproperty.com.my/sale/kuala-lumpur/all-residential/?page=';
+var URL = 'https://www.iproperty.com.my/sale/all-residential/?page=';
 var totalPages = 0;
 needle.get(URL+1, function(err, res){
 		if (err) throw err;

@@ -14,12 +14,12 @@ var httpOptions = {};
 
 var callback = function(url)
 {
-	console.log("Finished: "+url);
+	process.stdout.write(".");
 }
 
 var saleCallback = function(url)
 {
-    console.log("Finished sale: "+url);
+    process.stdout.write(",");
 }
 
 var createTableQuery = "CREATE TABLE IF NOT EXISTS data (projectId TEXT,projectName TEXT,projectType TEXT,projectLocation TEXT,projectQuotation TEXT,projectDate TEXT,projectAdditionalInfo TEXT,projectFactorLanPass TEXT,projectFinalPrice TEXT,projectPromo TEXT,projectLat TEXT,projectLng TEXT,programName TEXT,productNumber TEXT,productPrice TEXT,productBeds TEXT,productBaths TEXT,productFloors TEXT,productOrientation TEXT,productType TEXT,productUsefulSurface TEXT,productSurface TEXT,productTerraceSurface TEXT)";
@@ -86,7 +86,6 @@ areaLinks.push("https://www.portalinmobiliario.com/venta/casa/macul-metropolitan
 
 var scrapeLot = function(res)
 {
-    console.log("scrape lot");
     // var $ = cheerio.load(fs.readFileSync("somepage.html"));
     var $ = cheerio.load(res.body);
 
@@ -212,7 +211,6 @@ var scrapeLot = function(res)
 
 var scrapePaginator = function(res)
 {
-    console.log("scrapePaginator");
     var $ = cheerio.load(res.body);
     var totalPages = 1;
     var pageLink = "";
@@ -238,7 +236,6 @@ var scrapePaginator = function(res)
 
 var crawl = function(link, callback)
 {
-    console.log("crawl "+link);
     needle.get(link, httpOptions, function(err, res){
         if (err || res.statusCode !== 200)
         {

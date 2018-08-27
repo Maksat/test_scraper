@@ -10,6 +10,11 @@ var saleRegex = new RegExp("sale-[0-9]+");
 var db = new sqlite3.Database('data.sqlite');
 var results = [];
 
+needle.defaults(
+            {
+                user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36"
+            });
+
 var callback = function(url)
 {
 	console.log("Finished: "+url);
@@ -17,13 +22,16 @@ var callback = function(url)
 
 var saleCallback = function(url)
 {
-    console.log("Finished sale: "+url);
+    // console.log("Finished sale: "+url);
 }
 
 var crawl = function(link)
 {
     needle.get(link, function(err, res){
-        if(err) throw err;
+        if(err){
+            console.log("Error "+err);
+            return callback(true);
+        } 
 
         var $ = cheerio.load(res.body);
         $("script").filter(function(){
@@ -39,6 +47,13 @@ var crawl = function(link)
             var result = new Array();
 
             var json = JSON.parse(jsonString);
+            
+            var pricesJson = json["detail"]["prices"];
+            if(!pricesJson || pricesJson.length == 0)
+            {
+                return;
+            }
+
             var prices = json["detail"]["prices"][0];
             result.push(prices["type"], prices["currency"], prices["min"], prices["max"]);
 
@@ -90,15 +105,15 @@ var crawl = function(link)
         });
     })
 };
-  
+
 var q = tress(function(url, callback){
 	needle.get(url, function(err, res){
-		if (err) throw err;
+		if (err){
+            return callback(true);
+        } 
 
         // парсим DOM
         var $ = cheerio.load(res.body);
-        // var $ = cheerio.load(fs.readFileSync("page.html"));
-
 
         var getLink = function(sale)
         {
@@ -113,7 +128,12 @@ var q = tress(function(url, callback){
         var parseSale = function(index, li)
         {
         	var link = "https://www.iproperty.com.my"+getLink(li);
-            crawl(link);
+            try{
+                crawl(link);
+            }catch(error)
+            {
+                console.log("Error: "+error);
+            }
         }
 
         $("li").filter(function(){
@@ -126,9 +146,19 @@ var q = tress(function(url, callback){
 }, -5000); // запускаем 10 параллельных потоков
 
 q.drain = function(){
-	// fs.appendFileSync('./data.json', results.join("\n"));//JSON.stringify(results, null, 4));
     console.log("completed");
 }
+
+q.retry = function(){
+    q.pause();
+    // в this лежит возвращённая в очередь задача.
+    console.log('Paused on:', this);
+    setTimeout(function(){
+        q.resume();
+        console.log('Resumed');
+    }, 300000); // 5 минут
+}
+
 
 var URL = 'https://www.iproperty.com.my/sale/all-residential/?page=';
 var totalPages = 0;
